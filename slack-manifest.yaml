@@ -1,0 +1,40 @@
+display_information:
+  name: OOM Diagnostic Bot
+  description: Automated diagnostics for Out-of-Memory incidents in Kubernetes/OpenShift
+  background_color: "#e01e5a"
+  long_description: |-
+    The OOM Diagnostic Bot automatically monitors alert channels for Out-of-Memory (OOM) incidents and responds with comprehensive diagnostic information.
+
+    Features:
+    • Automatic OOM Detection: Monitors channels for OOM-related keywords
+    • Multi-Source Data Collection: Gathers data from OpenShift/Kubernetes, Prometheus, and AWS CloudWatch
+    • Intelligent Reports: Creates structured diagnostic reports with actionable recommendations
+    • Threaded Responses: Posts diagnostic reports as threaded replies to OOM alerts
+    • High Performance: Concurrent data collection with <30s response time
+
+    The bot automatically detects messages containing OOM-related keywords (OOMKilled, memory limit exceeded, OutOfMemoryError) and generates detailed diagnostic reports including memory analysis, restart counts, metrics, logs, and recommendations.
+
+features:
+  bot_user:
+    display_name: OOM Diagnostic Bot
+    always_online: true
+
+oauth_config:
+  scopes:
+    bot:
+      - channels:history
+      - groups:history
+      - chat:write
+      - app_mentions:read
+
+settings:
+  event_subscriptions:
+    bot_events:
+      - message.channels
+      - message.groups
+      - app_mention
+  interactivity:
+    is_enabled: false
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false

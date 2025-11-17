@@ -1,50 +1,120 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+- Version change: template → 1.0.0 (initial constitution)
+- Added sections: All core principles and governance
+- Templates status:
+  ✅ plan-template.md (constitution check section references this file)
+  ✅ spec-template.md (compatible with quality requirements)
+  ✅ tasks-template.md (TDD approach aligns with testing principles)
+- Follow-up TODOs: None
+-->
+
+# OOM Diagnostic Bot Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Code Quality Excellence
+Code MUST be maintainable, readable, and self-documenting. All code changes require:
+- Static analysis passing (linting, type checking, security scans)
+- Code review approval from at least one maintainer
+- Documentation for public APIs and complex logic
+- Consistent formatting and naming conventions
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Rationale: Diagnostic tools require high reliability and maintainability as they are used
+to debug critical system issues where code clarity directly impacts incident resolution.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Test-Driven Development (NON-NEGOTIABLE)
+Tests MUST be written before implementation. Every feature requires:
+- Unit tests covering all code paths and edge cases
+- Integration tests validating end-to-end workflows
+- Contract tests ensuring API compatibility
+- Performance benchmarks for diagnostic operations
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+Rationale: OOM diagnostics involve complex system interactions where bugs can mislead
+engineers during critical incidents. Comprehensive testing prevents false diagnostics.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. User Experience Consistency
+All user interfaces MUST provide consistent, intuitive interactions:
+- CLI commands follow standard UNIX conventions
+- Output formats are machine-readable (JSON) and human-friendly
+- Error messages include actionable guidance and context
+- Progress indicators for long-running diagnostic operations
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Rationale: During memory pressure incidents, users need reliable, predictable tools
+that don't add cognitive load to an already stressful debugging situation.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Performance Standards
+Diagnostic operations MUST meet strict performance requirements:
+- Memory analysis completes within 30 seconds for 8GB dumps
+- CLI startup time under 500ms
+- Memory footprint under 100MB during analysis
+- CPU usage profiled and optimized for production environments
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Rationale: A diagnostic tool that consumes excessive resources during OOM conditions
+defeats its purpose and may worsen the situation being diagnosed.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Observability and Transparency
+System behavior MUST be observable and debuggable:
+- Structured logging with consistent formats
+- Metrics collection for diagnostic accuracy and performance
+- Debug modes providing detailed operation traces
+- Clear documentation of diagnostic algorithms and limitations
+
+Rationale: Meta-debugging (debugging the debugger) is essential when diagnostic
+tools themselves may have issues or produce unexpected results.
+
+## Development Standards
+
+### Quality Gates
+All changes MUST pass automated quality gates:
+- Static analysis (security, complexity, style)
+- Test suite execution with 95%+ coverage
+- Performance regression testing
+- Documentation completeness validation
+
+### Security Requirements
+Security MUST be built-in from the start:
+- Input validation for all external data sources
+- Secure handling of memory dumps and system information
+- Audit logging for diagnostic operations
+- Regular dependency vulnerability scanning
+
+## Deployment and Operations
+
+### Release Process
+Releases follow semantic versioning with quality assurance:
+- MAJOR: Breaking CLI changes or diagnostic algorithm changes
+- MINOR: New diagnostic features or output format additions
+- PATCH: Bug fixes and performance improvements
+
+### Production Readiness
+Production deployments require:
+- Automated testing in staging environments
+- Performance validation against benchmarks
+- Rollback procedures for failed deployments
+- Monitoring and alerting for diagnostic accuracy
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+### Amendment Process
+Constitution changes require:
+1. Proposal documentation with rationale and impact analysis
+2. Review period of minimum 7 days for feedback
+3. Approval from project maintainers
+4. Updated template propagation and validation
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+### Compliance Review
+Regular compliance audits ensure adherence:
+- Monthly automated checks of code quality metrics
+- Quarterly review of performance benchmarks
+- Annual security assessment and penetration testing
+- Continuous monitoring of test coverage and reliability
+
+### Violation Handling
+Principle violations must be:
+- Documented with technical justification
+- Approved by maintainers before merge
+- Tracked for future remediation
+- Reported in compliance metrics
+
+**Version**: 1.0.0 | **Ratified**: 2025-09-25 | **Last Amended**: 2025-09-25

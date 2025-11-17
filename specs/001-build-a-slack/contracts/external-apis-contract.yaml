@@ -1,0 +1,404 @@
+openapi: 3.0.3
+info:
+  title: External API Integration Contracts
+  description: Contracts for OpenShift, Prometheus, and CloudWatch API integrations
+  version: 1.0.0
+
+paths:
+  /openshift/api/v1/namespaces/{namespace}/pods/{name}:
+    get:
+      summary: Get pod information from OpenShift
+      description: Retrieve detailed pod information including resource usage and status
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+      responses:
+        '200':
+          description: Pod information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenShiftPod'
+        '404':
+          description: Pod not found
+        '401':
+          description: Authentication failed
+        '403':
+          description: Insufficient permissions
+
+  /prometheus/api/v1/query:
+    get:
+      summary: Execute Prometheus instant query
+      description: Query current metric values for memory and CPU usage
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+            example: 'container_memory_usage_bytes{pod="example-pod", namespace="default"}'
+        - name: time
+          in: query
+          schema:
+            type: string
+            format: unix-timestamp
+            example: '1640995200'
+      responses:
+        '200':
+          description: Query executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrometheusQueryResult'
+        '400':
+          description: Invalid query syntax
+        '422':
+          description: Query execution error
+
+  /prometheus/api/v1/query_range:
+    get:
+      summary: Execute Prometheus range query
+      description: Query metric values over a time range for trend analysis
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: unix-timestamp
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+            format: unix-timestamp
+        - name: step
+          in: query
+          required: true
+          schema:
+            type: string
+            example: '1m'
+      responses:
+        '200':
+          description: Range query executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrometheusRangeQueryResult'
+
+  /cloudwatch/logs/describe-log-groups:
+    post:
+      summary: List CloudWatch log groups
+      description: Discover available log groups for the application
+      requestBody:
+        required: true
+        content:
+          application/x-amz-json-1.1:
+            schema:
+              type: object
+              properties:
+                logGroupNamePrefix:
+                  type: string
+                  example: '/aws/eks/cluster'
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 50
+                  default: 20
+      responses:
+        '200':
+          description: Log groups retrieved successfully
+          content:
+            application/x-amz-json-1.1:
+              schema:
+                $ref: '#/components/schemas/CloudWatchLogGroups'
+
+  /cloudwatch/logs/filter-log-events:
+    post:
+      summary: Filter CloudWatch log events
+      description: Search log events by time range and filter patterns
+      requestBody:
+        required: true
+        content:
+          application/x-amz-json-1.1:
+            schema:
+              type: object
+              properties:
+                logGroupName:
+                  type: string
+                startTime:
+                  type: integer
+                  format: unix-timestamp
+                endTime:
+                  type: integer
+                  format: unix-timestamp
+                filterPattern:
+                  type: string
+                  example: 'OOM ERROR killed'
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 1000
+                  default: 100
+              required:
+                - logGroupName
+                - startTime
+                - endTime
+      responses:
+        '200':
+          description: Log events filtered successfully
+          content:
+            application/x-amz-json-1.1:
+              schema:
+                $ref: '#/components/schemas/CloudWatchLogEvents'
+
+components:
+  schemas:
+    OpenShiftPod:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+          example: 'v1'
+        kind:
+          type: string
+          example: 'Pod'
+        metadata:
+          type: object
+          properties:
+            name:
+              type: string
+            namespace:
+              type: string
+            labels:
+              type: object
+              additionalProperties:
+                type: string
+            annotations:
+              type: object
+              additionalProperties:
+                type: string
+            creationTimestamp:
+              type: string
+              format: date-time
+        spec:
+          type: object
+          properties:
+            containers:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  image:
+                    type: string
+                  resources:
+                    type: object
+                    properties:
+                      requests:
+                        type: object
+                        properties:
+                          memory:
+                            type: string
+                            example: '128Mi'
+                          cpu:
+                            type: string
+                            example: '100m'
+                      limits:
+                        type: object
+                        properties:
+                          memory:
+                            type: string
+                            example: '256Mi'
+                          cpu:
+                            type: string
+                            example: '200m'
+            nodeName:
+              type: string
+        status:
+          type: object
+          properties:
+            phase:
+              type: string
+              enum: [Pending, Running, Succeeded, Failed, Unknown]
+            containerStatuses:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  ready:
+                    type: boolean
+                  started:
+                    type: boolean
+                  restartCount:
+                    type: integer
+                  lastState:
+                    type: object
+                    properties:
+                      terminated:
+                        type: object
+                        properties:
+                          reason:
+                            type: string
+                          exitCode:
+                            type: integer
+                          finishedAt:
+                            type: string
+                            format: date-time
+
+    PrometheusQueryResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        data:
+          type: object
+          properties:
+            resultType:
+              type: string
+              enum: [matrix, vector, scalar, string]
+            result:
+              type: array
+              items:
+                type: object
+                properties:
+                  metric:
+                    type: object
+                    additionalProperties:
+                      type: string
+                  value:
+                    type: array
+                    items:
+                      oneOf:
+                        - type: number
+                        - type: string
+                    minItems: 2
+                    maxItems: 2
+        error:
+          type: string
+        warnings:
+          type: array
+          items:
+            type: string
+
+    PrometheusRangeQueryResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        data:
+          type: object
+          properties:
+            resultType:
+              type: string
+              enum: [matrix]
+            result:
+              type: array
+              items:
+                type: object
+                properties:
+                  metric:
+                    type: object
+                    additionalProperties:
+                      type: string
+                  values:
+                    type: array
+                    items:
+                      type: array
+                      items:
+                        oneOf:
+                          - type: number
+                          - type: string
+                      minItems: 2
+                      maxItems: 2
+
+    CloudWatchLogGroups:
+      type: object
+      properties:
+        logGroups:
+          type: array
+          items:
+            type: object
+            properties:
+              logGroupName:
+                type: string
+              creationTime:
+                type: integer
+                format: unix-timestamp
+              retentionInDays:
+                type: integer
+              metricFilterCount:
+                type: integer
+              arn:
+                type: string
+              storedBytes:
+                type: integer
+        nextToken:
+          type: string
+
+    CloudWatchLogEvents:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              logStreamName:
+                type: string
+              timestamp:
+                type: integer
+                format: unix-timestamp
+              message:
+                type: string
+              ingestionTime:
+                type: integer
+                format: unix-timestamp
+              eventId:
+                type: string
+        nextToken:
+          type: string
+        searchedLogStreams:
+          type: array
+          items:
+            type: object
+            properties:
+              logStreamName:
+                type: string
+              searchedCompletely:
+                type: boolean
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: OpenShift service account token
+    AWSSignature:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: AWS Signature Version 4
+
+security:
+  - BearerAuth: []
+  - AWSSignature: []

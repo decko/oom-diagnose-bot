@@ -1,0 +1,352 @@
+openapi: 3.0.3
+info:
+  title: Slack Bot API Contracts
+  description: API contracts for Slack bot interactions and diagnostic operations
+  version: 1.0.0
+
+paths:
+  /slack/events:
+    post:
+      summary: Handle incoming Slack events
+      description: Process Slack events including message creation and mentions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: [event_callback, url_verification]
+                challenge:
+                  type: string
+                  description: URL verification challenge
+                event:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum: [message, app_mention]
+                    channel:
+                      type: string
+                      pattern: '^C[A-Z0-9]{8,}$'
+                    user:
+                      type: string
+                      pattern: '^U[A-Z0-9]{8,}$'
+                    text:
+                      type: string
+                      maxLength: 40000
+                    ts:
+                      type: string
+                      pattern: '^\d+\.\d+$'
+                    thread_ts:
+                      type: string
+                      pattern: '^\d+\.\d+$'
+              required: [type]
+      responses:
+        '200':
+          description: Event processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge:
+                    type: string
+        '400':
+          description: Invalid event format
+        '500':
+          description: Processing error
+
+  /slack/interactive:
+    post:
+      summary: Handle Slack interactive components
+      description: Process button clicks and other interactive elements
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                payload:
+                  type: string
+                  description: JSON-encoded interaction payload
+      responses:
+        '200':
+          description: Interaction handled successfully
+
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Check bot service health and external dependencies
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded]
+                  timestamp:
+                    type: string
+                    format: date-time
+                  data_sources:
+                    type: object
+                    properties:
+                      openshift:
+                        type: string
+                        enum: [available, unavailable, timeout]
+                      prometheus:
+                        type: string
+                        enum: [available, unavailable, timeout]
+                      cloudwatch:
+                        type: string
+                        enum: [available, unavailable, timeout]
+                  uptime_seconds:
+                    type: integer
+                    minimum: 0
+        '503':
+          description: Service unhealthy
+
+  /metrics:
+    get:
+      summary: Prometheus metrics endpoint
+      description: Export bot operational metrics
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP oom_bot_alerts_processed_total Total OOM alerts processed
+                  # TYPE oom_bot_alerts_processed_total counter
+                  oom_bot_alerts_processed_total{status="success"} 42
+                  oom_bot_alerts_processed_total{status="failed"} 3
+
+                  # HELP oom_bot_response_duration_seconds Time to generate diagnostic reports
+                  # TYPE oom_bot_response_duration_seconds histogram
+                  oom_bot_response_duration_seconds_bucket{le="10"} 35
+                  oom_bot_response_duration_seconds_bucket{le="30"} 40
+                  oom_bot_response_duration_seconds_bucket{le="+Inf"} 42
+
+components:
+  schemas:
+    OOMAlert:
+      type: object
+      properties:
+        message_id:
+          type: string
+          pattern: '^[0-9]+\.[0-9]+$'
+        channel_id:
+          type: string
+          pattern: '^C[A-Z0-9]{8,}$'
+        timestamp:
+          type: string
+          format: date-time
+        pod_name:
+          type: string
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        namespace:
+          type: string
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        container_name:
+          type: string
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        keywords_matched:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        raw_content:
+          type: string
+          maxLength: 40000
+      required:
+        - message_id
+        - channel_id
+        - timestamp
+        - pod_name
+        - namespace
+        - keywords_matched
+        - raw_content
+
+    DiagnosticReport:
+      type: object
+      properties:
+        alert_id:
+          type: string
+        generation_timestamp:
+          type: string
+          format: date-time
+        summary:
+          type: string
+          maxLength: 2000
+        openshift_data:
+          $ref: '#/components/schemas/PodInformation'
+        prometheus_metrics:
+          $ref: '#/components/schemas/PrometheusMetrics'
+        cloudwatch_logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/CloudWatchLog'
+          maxItems: 50
+        recommendations:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+        data_sources_available:
+          type: array
+          items:
+            type: string
+            enum: [openshift, prometheus, cloudwatch]
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              source:
+                type: string
+              error:
+                type: string
+              timestamp:
+                type: string
+                format: date-time
+      required:
+        - alert_id
+        - generation_timestamp
+        - data_sources_available
+
+    PodInformation:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        status:
+          type: string
+          enum: [Pending, Running, Succeeded, Failed, Unknown]
+        memory_request:
+          type: integer
+          minimum: 0
+        memory_limit:
+          type: integer
+          minimum: 0
+        cpu_request:
+          type: integer
+          minimum: 0
+        cpu_limit:
+          type: integer
+          minimum: 0
+        creation_timestamp:
+          type: string
+          format: date-time
+        restart_count:
+          type: integer
+          minimum: 0
+        node_name:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        containers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContainerInformation'
+      required:
+        - name
+        - namespace
+        - status
+
+    ContainerInformation:
+      type: object
+      properties:
+        name:
+          type: string
+        image:
+          type: string
+        memory_usage:
+          type: integer
+          minimum: 0
+        cpu_usage:
+          type: integer
+          minimum: 0
+        restart_count:
+          type: integer
+          minimum: 0
+        last_termination_reason:
+          type: string
+        ready:
+          type: boolean
+        started:
+          type: boolean
+      required:
+        - name
+        - image
+        - ready
+        - started
+
+    PrometheusMetrics:
+      type: object
+      properties:
+        pod_name:
+          type: string
+        namespace:
+          type: string
+        memory_usage_current:
+          type: integer
+          minimum: 0
+        memory_usage_average_1h:
+          type: integer
+          minimum: 0
+        memory_usage_peak_24h:
+          type: integer
+          minimum: 0
+        memory_limit:
+          type: integer
+          minimum: 0
+        oom_kills_total:
+          type: integer
+          minimum: 0
+        cpu_usage_current:
+          type: number
+          minimum: 0
+          maximum: 100
+        query_timestamp:
+          type: string
+          format: date-time
+      required:
+        - pod_name
+        - namespace
+        - query_timestamp
+
+    CloudWatchLog:
+      type: object
+      properties:
+        log_group:
+          type: string
+        log_stream:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        message:
+          type: string
+          maxLength: 10000
+        level:
+          type: string
+          enum: [ERROR, WARN, INFO, DEBUG]
+        source:
+          type: string
+      required:
+        - log_group
+        - timestamp
+        - message
